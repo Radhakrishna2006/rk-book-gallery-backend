@@ -1,12 +1,34 @@
 # Book Gallery Backend
 
-Spring Boot REST API for RK's Book Gallery. Requires Java 17 or newer, Maven,
-and a MySQL server.
+Spring Boot REST API for RK's Book Gallery. Requires Java 17 or newer and a MySQL server.
 
-## Configure and run locally
+## Build for Production
 
-From the backend repository root, set the database credentials and required
-JWT/admin secrets in PowerShell, then start the API:
+```powershell
+# Using IntelliJ's bundled Maven (adjust path if needed):
+& "C:\Program Files\JetBrains\IntelliJ IDEA 2026.1.2\plugins\maven\lib\maven3\bin\mvn.cmd" clean package "-DskipTests=true"
+```
+
+The output JAR will be at: `target/bookgallery-1.0.0.jar`
+
+## Deploy to Production
+
+Set the following environment variables on your hosting platform, then run the JAR:
+
+```powershell
+$env:DB_URL        = "jdbc:mysql://<host>:3306/bookgallery?useSSL=true&serverTimezone=UTC"
+$env:DB_USERNAME   = "your-db-user"
+$env:DB_PASSWORD   = "your-db-password"
+$env:JWT_SECRET    = "<base64-encoded-32+-byte-random-string>"
+$env:ADMIN_SEED_PASSWORD = "choose-a-strong-admin-password"
+$env:CORS_ALLOWED_ORIGINS = "https://your-frontend-domain.com"
+java -jar target/bookgallery-1.0.0.jar
+```
+
+> **Important:** `JWT_SECRET` must be a Base64-encoded key with at least 32 random bytes.
+> Generate one with: `[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))`
+
+## Run Locally
 
 ```powershell
 $env:DB_USERNAME = "root"
@@ -14,26 +36,21 @@ $env:DB_PASSWORD = "your-local-mysql-password"
 $env:JWT_SECRET = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 $env:ADMIN_SEED_PASSWORD = "choose-a-strong-admin-password"
 $env:CORS_ALLOWED_ORIGINS = "http://localhost:5500,http://127.0.0.1:5500,http://localhost:8000,http://127.0.0.1:8000"
-mvn spring-boot:run
+& "C:\Program Files\JetBrains\IntelliJ IDEA 2026.1.2\plugins\maven\lib\maven3\bin\mvn.cmd" spring-boot:run
 ```
 
-By default, the API listens on port `8080` and connects to
-`jdbc:mysql://localhost:3306/bookgallery`; the database is created if the
-configured MySQL account has permission. Set `DB_URL`, `SERVER_PORT`, and
-`JWT_EXPIRATION_MS` to override those defaults.
+The database `bookgallery` is created automatically if the MySQL user has permission.
 
-`JWT_SECRET` must be a Base64-encoded key with at least 32 random bytes.
-`ADMIN_SEED_PASSWORD` is required and is used only when the seed administrator
-does not already exist:
-
-- Email: `admin@rkbookgallery.com`
-- Password: the value of `ADMIN_SEED_PASSWORD`
-
-Set `CORS_ALLOWED_ORIGINS` to a comma-separated list of exact frontend origins
-when deploying. The defaults support common local development server ports.
+Seed admin credentials (created on first run if not existing):
+- **Email:** `admin@rkbookgallery.com`
+- **Password:** value of `ADMIN_SEED_PASSWORD`
 
 ## API
 
-The API base path is `/api`. Public book, category, registration, and login
-endpoints are available without a token. Cart, orders, and admin routes use
-JWT authentication; admin routes also require the admin role.
+Base path: `/api`
+
+| Route type | Auth required |
+|---|---|
+| Books, categories, register, login | None |
+| Cart, orders | JWT Bearer token |
+| Admin routes (`/admin/*`) | JWT Bearer token + ADMIN role |
